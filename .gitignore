@@ -1,0 +1,17 @@
+# Gradle and build output
+.gradle/
+.kotlin/
+build/
+/app/build/
+local.properties
+
+# IDEs and OS
+.idea/
+*.iml
+.DS_Store
+
+# Signing material never belongs in the repo (see docs/RELEASE.md)
+*.jks
+*.keystore
+*.pk8
+keystore.properties

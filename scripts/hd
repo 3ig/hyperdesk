@@ -1,0 +1,4 @@
+#!/bin/sh
+# Debug: send one request to the helper, e.g.  scripts/hd tasks 38
+APK=$(adb shell pm path dev.hyperdesk | head -1 | cut -d: -f2 | tr -d '\r')
+adb shell "CLASSPATH=$APK app_process /system/bin dev.hyperdesk.shell.ShellServer --call $*"

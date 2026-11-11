@@ -1,0 +1,3 @@
+#!/bin/sh
+# Debug: drive a HyperDesk feature over adb, e.g.  scripts/dbg fullscreen com.miui.calculator   scripts/dbg switch   scripts/dbg scale 115
+adb shell "content call --uri content://dev.hyperdesk.helper --method debug --arg '$*'" >/dev/null
