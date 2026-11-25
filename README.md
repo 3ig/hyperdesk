@@ -7,8 +7,8 @@ it back on and builds a desktop around it: real resizable windows, a taskbar, a 
 shortcuts. Plug the phone into a USB-C dock or monitor and the desktop appears there; the phone keeps working as a
 phone, or becomes the touchpad and keyboard.
 
-> **Early release.** Developed and tested on one phone (Xiaomi 15 Ultra, HyperOS 3.0, Android 16) with a USB-C
-> dock and an ultrawide monitor. Some features are built but not yet verified on a device; [ROADMAP.md](ROADMAP.md)
+> **Early release.** Developed and tested on one phone (Xiaomi 15 Ultra, on HyperOS 3.0 / Android 16 and
+> HyperOS 4.0 / Android 17) with a USB-C dock and an ultrawide monitor. Some features are built but not yet verified on a device; [ROADMAP.md](ROADMAP.md)
 > says which. HyperDesk is not affiliated with Xiaomi.
 
 ## Features
@@ -29,7 +29,8 @@ phone, or becomes the touchpad and keyboard.
 
 ## Requirements
 
-- A Xiaomi phone on HyperOS 3 (Android 16) that outputs video over USB-C (DisplayPort Alt Mode). Flagships do;
+- A Xiaomi phone on HyperOS 3 (Android 16) or HyperOS 4 (Android 17) that outputs video over USB-C
+  (DisplayPort Alt Mode). Flagships do;
   most Redmi and POCO phones do not.
 - A monitor, connected directly by USB-C or through a dock.
 - Wi-Fi during setup and once after each restart of the phone (Android's Wireless debugging only runs on Wi-Fi).
@@ -97,6 +98,8 @@ also revoke it under *Wireless debugging → Paired devices*.
   through Wireless debugging, which needs Wi-Fi.
 - **"The phone refused the permission"**: switch on *USB debugging (Security settings)* in Developer options, then
   tap *Try again*.
+- **After a system update HyperDesk says it is not paired any more**: updates can make the phone forget paired
+  devices. Pair again from HyperDesk's settings or setup guide.
 - **Installing a release over a build you made yourself fails**: the two are signed with different keys. Uninstall
   HyperDesk first; you will need to pair again.
 
@@ -107,6 +110,9 @@ also revoke it under *Wireless debugging → Paired devices*.
 - `ShellServer` is a small helper that runs with the shell user's rights, started from HyperDesk's own APK through
   `app_process`. It moves, resizes, raises and closes windows, keeps the mouse on the monitor, and provides the
   virtual mouse for the touchpad. It talks to the app over a Binder handed to it through a content provider.
+- On Android 17, which keeps a monitor in mirroring mode where apps may not open, the helper creates a desktop
+  display of HyperDesk's own and `Bridge` shows it full-screen on the monitor. The desk, mouse and keyboard all run
+  on that display.
 - `Adb.kt` is an ADB client that connects to the phone's own Wireless debugging (the approach
   [Shizuku](https://github.com/RikkaApps/Shizuku) uses). It grants HyperDesk its permission during setup and starts
   the helper, so no computer is needed.

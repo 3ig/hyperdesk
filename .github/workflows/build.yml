@@ -94,7 +94,7 @@ jobs:
             echo "Download **${APK}** on the phone and open it to install (allow installs from your browser or file manager when asked),"
             echo "then open **HyperDesk** and follow the setup guide. No computer is needed."
             echo
-            echo "Needs a Xiaomi phone on HyperOS 3 (Android 16) with video output over USB-C, and Wi-Fi for setup."
+            echo "Needs a Xiaomi phone on HyperOS 3 or 4 (Android 16 or 17) with video output over USB-C, and Wi-Fi for setup."
             echo "SHA-256: \`$(cut -d' ' -f1 "$APK.sha256")\`"
           } > release-notes.md
           cat release-notes.md

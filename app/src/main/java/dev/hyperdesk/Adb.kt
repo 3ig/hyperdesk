@@ -140,21 +140,42 @@ object Adb {
             if (!wirelessOn(app)) throw IllegalStateException("Wireless debugging needs Wi-Fi to be connected.")
         }
         val m = manager(app)
+        var forgotten = false
         val ok = try {
             m.isConnected || m.connectTls(app, 6000)
         } catch (e: io.github.muntashirakon.adb.AdbPairingRequiredException) {
             false
         } catch (t: Throwable) {
-            if (turnedOn) try { Settings.Global.putInt(app.contentResolver, "adb_wifi_enabled", 0) } catch (_: Throwable) {}
-            throw t
+            // The phone turning down our certificate means it no longer knows our key: after a system update, or
+            // after "Forget" under Paired devices. That is "pair again", not an error.
+            if (isTlsRejection(t)) {
+                forgotten = true
+                false
+            } else {
+                if (turnedOn) try { Settings.Global.putInt(app.contentResolver, "adb_wifi_enabled", 0) } catch (_: Throwable) {}
+                throw t
+            }
         }
         if (!ok) {
             if (turnedOn) try { Settings.Global.putInt(app.contentResolver, "adb_wifi_enabled", 0) } catch (_: Throwable) {}
+            val wasPaired = Prefs.paired
             Prefs.paired = false
-            throw IllegalStateException("Not paired yet. Pair with Wireless debugging first.")
+            throw IllegalStateException(
+                if (forgotten || wasPaired) "Not paired any more: the phone has forgotten HyperDesk's pairing, which happens after a system update. Pair again."
+                else "Not paired yet. Pair with Wireless debugging first.",
+            )
         }
         Prefs.paired = true
         return Link(m, turnedOn)
+    }
+
+    private fun isTlsRejection(t: Throwable): Boolean {
+        var c: Throwable? = t
+        while (c != null) {
+            if (c is javax.net.ssl.SSLException) return true
+            c = c.cause
+        }
+        return false
     }
 
     private fun release(app: Context, link: Link?) {

@@ -61,6 +61,7 @@ class Decor(private val desk: Desk) {
 
     private val bars = HashMap<Int, BarHit>()
     private val handles = ArrayList<Pair<Int, View>>()
+    private var handlesAt: Rect? = null
     private var stage: StageView? = null
     private val painter by lazy { BarPainter(ctx.resources.displayMetrics.density) }
 
@@ -216,9 +217,15 @@ class Decor(private val desk: Desk) {
         val t = top()
         val show = t != null && desk.helper && !desk.isMaximized(bodyOf(frame(t)))
         if (!show) {
-            handles.forEach { it.second.visibility = View.GONE }
+            if (handlesAt != null) handles.forEach { it.second.visibility = View.GONE }
+            handlesAt = null
             return
         }
+        // Re-laying out a window makes the system re-check every display (and, on HyperOS, reset the panel's
+        // refresh rate), so only touch the handles when the window they belong to has really moved.
+        val key = frame(t!!)
+        if (key == handlesAt && handles.isNotEmpty()) return
+        handlesAt = Rect(key)
         if (handles.isEmpty()) {
             for (edge in intArrayOf(L, R, B, L or B, R or B)) {
                 val v = View(ctx)
@@ -236,7 +243,7 @@ class Decor(private val desk: Desk) {
                 handles.add(edge to v)
             }
         }
-        val rect = frame(t!!)
+        val rect = frame(t)
         val th = dp(10)
         val c = dp(24)
         for ((edge, v) in handles) {

@@ -15,6 +15,8 @@ Status key: **Done** = built and seen working · **Built** = implemented, not ye
 | Setup without a computer | Done | After pairing, HyperDesk grants its own permission and finishes setup; verified by revoking the permission and letting the guide restore everything. Needs Wi-Fi, and on Xiaomi "USB debugging (Security settings)". |
 | Pairing code typed into a notification | Built | Needs a real pairing dialog to test. |
 | Recover when HyperOS kills the app | Built | Service is re-bound automatically; settings show the live state. |
+| HyperOS 4 / Android 17: desktop display shown on the monitor | Done | Apps open, and clicking and typing confirmed by hand. Adds one frame of composition. Apps move to the phone screen if the helper restarts. |
+| Pair again after a system update | Built | The phone forgot the pairing after the HyperOS 4 update; HyperDesk now detects that. |
 | Phone navigation bar repair | Built | Helper command `fixnav`; the manual version of the fix worked. |
 
 ## Window management

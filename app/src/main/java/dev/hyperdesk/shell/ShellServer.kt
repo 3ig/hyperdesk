@@ -66,6 +66,7 @@ object ShellServer {
     const val TRANSACT_REGISTER = 2
     const val TRANSACT_SNAPSHOT = 3
     const val TRANSACT_POINTER = 4
+    const val TRANSACT_DISPLAY = 5
     private var appUid = -1
     @Volatile private var appLinked = false
 
@@ -98,6 +99,18 @@ object ShellServer {
                 }
                 TRANSACT_POINTER -> {
                     Pointer.event(data.readInt(), data.readInt(), data.readInt())
+                    return true
+                }
+                TRANSACT_DISPLAY -> {
+                    val id = try {
+                        val surface = android.view.Surface.CREATOR.createFromParcel(data)
+                        DesktopDisplay.create(surface, data.readInt(), data.readInt(), data.readInt())
+                    } catch (t: Throwable) {
+                        val c = (t as? java.lang.reflect.InvocationTargetException)?.targetException ?: t
+                        System.err.println("desktop display: $c")
+                        -1
+                    }
+                    reply?.writeInt(id)
                     return true
                 }
                 TRANSACT_REGISTER -> {
@@ -175,6 +188,8 @@ object ShellServer {
         "mouse" -> mouse(a[1].toInt())
         "panel" -> { panel(a[1].toInt()); "" }
         "fixnav" -> fixNav()
+        "display_release" -> { DesktopDisplay.release(); "" }
+        "display_resize" -> { DesktopDisplay.resize(a[1].toInt(), a[2].toInt(), a[3].toInt()); "" }
         "density" -> density(a[1].toInt(), a.getOrNull(2)?.toIntOrNull())
         "imepolicy" -> imePolicy(a[1].toInt(), a.getOrNull(2)?.toIntOrNull())
         "pointer_start" -> Pointer.start(a[1].toInt())
@@ -436,6 +451,64 @@ object ShellServer {
         Thread.sleep(1500)
         sh("settings put global force_fsg_nav_bar $cur")
         return "fixed"
+    }
+
+    // ---- desktop display (Android 17 / HyperOS 4) ----
+
+    /**
+     * On Android 17 a connected monitor is kept in mirroring mode, and a mirroring display may not show app windows.
+     * A virtual display that holds its own content may, so the desktop runs on one of those instead, created here
+     * with the shell's rights and drawn into a surface the app shows full-screen on the monitor.
+     */
+    object DesktopDisplay {
+        // PUBLIC | OWN_CONTENT_ONLY | SUPPORTS_TOUCH | SHOULD_SHOW_SYSTEM_DECORATIONS | TRUSTED
+        private const val FLAGS = 1 or 8 or 64 or 512 or 1024
+        private var callback: Any? = null
+        var id = -1
+            private set
+
+        private val dms: Any by lazy {
+            val b = Class.forName("android.os.ServiceManager").getMethod("getService", String::class.java).invoke(null, "display") as IBinder
+            Class.forName("android.hardware.display.IDisplayManager\$Stub").getMethod("asInterface", IBinder::class.java).invoke(null, b)!!
+        }
+
+        private fun call(name: String, vararg args: Any?): Any? =
+            dms.javaClass.methods.first { it.name == name && it.parameterTypes.size == args.size }.invoke(dms, *args)
+
+        @Synchronized
+        fun create(surface: android.view.Surface, width: Int, height: Int, dpi: Int): Int {
+            release()
+            val b = android.hardware.display.VirtualDisplayConfig.Builder("HyperDesk", width, height, dpi)
+                .setFlags(FLAGS)
+                .setSurface(surface)
+            // No requested refresh rate: HyperOS's compositor gates virtual displays that ask for one and can stop
+            // drawing them altogether. Without it the display simply follows the phone's own rate.
+            // Optional extras, not present on every build: let every app resize freely, and allow a home screen.
+            for ((name, value) in listOf("setIgnoreActivitySizeRestrictions" to true, "setHomeSupported" to true)) {
+                try { b.javaClass.getMethod(name, Boolean::class.javaPrimitiveType).invoke(b, value) } catch (_: Throwable) {}
+            }
+            // The callback is also the display's token: the display goes away if this process dies.
+            val cb = Class.forName("android.hardware.display.IVirtualDisplayCallback\$Stub")
+                .getMethod("asInterface", IBinder::class.java).invoke(null, android.os.Binder())
+            val newId = call("createVirtualDisplay", b.build(), cb, null, "com.android.shell") as Int
+            if (newId < 0) throw IllegalStateException("createVirtualDisplay returned $newId")
+            callback = cb
+            id = newId
+            return newId
+        }
+
+        @Synchronized
+        fun release() {
+            val cb = callback ?: return
+            callback = null
+            id = -1
+            try { call("releaseVirtualDisplay", cb) } catch (_: Throwable) {}
+        }
+
+        @Synchronized
+        fun resize(width: Int, height: Int, dpi: Int) {
+            call("resizeVirtualDisplay", callback ?: throw IllegalStateException("no desktop display"), width, height, dpi)
+        }
     }
 
     // ---- phone as touchpad: a virtual mouse the system treats like a real one ----

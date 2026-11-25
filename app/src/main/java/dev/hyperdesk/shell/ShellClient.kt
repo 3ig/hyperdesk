@@ -98,6 +98,28 @@ object ShellClient {
         }
     }
 
+    /** Ask the helper for a desktop display drawing into [surface]. [cb] gets its id on the main thread, or -1. */
+    fun createDisplay(surface: android.view.Surface, width: Int, height: Int, dpi: Int, cb: (Int) -> Unit) {
+        io.execute {
+            var id = -1
+            val b = remote
+            if (b != null) {
+                val data = Parcel.obtain()
+                val reply = Parcel.obtain()
+                try {
+                    surface.writeToParcel(data, 0)
+                    data.writeInt(width); data.writeInt(height); data.writeInt(dpi)
+                    if (b.transact(ShellServer.TRANSACT_DISPLAY, data, reply, 0)) id = reply.readInt()
+                } catch (_: Exception) {
+                } finally {
+                    data.recycle()
+                    reply.recycle()
+                }
+            }
+            main.post { cb(id) }
+        }
+    }
+
     /** One-way pointer event for the virtual mouse; cheap enough to send for every touch move. */
     fun pointer(kind: Int, a: Int, b: Int) {
         val r = remote ?: return

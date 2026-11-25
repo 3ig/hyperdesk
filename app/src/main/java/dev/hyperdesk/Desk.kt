@@ -16,7 +16,8 @@ import android.view.Gravity
 import androidx.compose.ui.graphics.asImageBitmap
 
 /** Everything that lives on one external display: taskbar, start menu, window bookkeeping. */
-class Desk(val svc: DeskService, val display: Display) {
+/** [captureId] is the display screenshots are taken of: the monitor itself, which with a bridge is not [display]. */
+class Desk(val svc: DeskService, val display: Display, val captureId: Int = display.displayId) {
     val ctx: Context = svc.createDisplayContext(display)
         .createWindowContext(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
         .also { it.setTheme(android.R.style.Theme_DeviceDefault) }
@@ -488,7 +489,7 @@ class Desk(val svc: DeskService, val display: Display) {
         hideQuick()
         // Let the panel disappear before the capture.
         ui.postDelayed({
-            ShellClient.request("shot", id) { path -> toast(if (path != null) "Screenshot saved to Pictures/Screenshots" else "Screenshot failed") }
+            ShellClient.request("shot", captureId) { path -> toast(if (path != null) "Screenshot saved to Pictures/Screenshots" else "Screenshot failed") }
         }, 250)
     }
 

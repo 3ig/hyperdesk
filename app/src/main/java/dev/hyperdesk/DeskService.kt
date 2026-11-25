@@ -18,6 +18,8 @@ class DeskService : AccessibilityService(), DisplayManager.DisplayListener {
     private lateinit var dm: DisplayManager
     var desk: Desk? = null
         private set
+    /** On Android 17 the desk runs on a desktop display that this bridge shows on the monitor. */
+    private var bridge: Bridge? = null
 
     private val packages = object : android.content.BroadcastReceiver() {
         override fun onReceive(c: android.content.Context, i: android.content.Intent) {
@@ -25,13 +27,13 @@ class DeskService : AccessibilityService(), DisplayManager.DisplayListener {
         }
     }
 
-    private val onHelper: () -> Unit = { desk?.onHelperConnected() }
+    private val onHelper: () -> Unit = { bridge?.onHelperConnected(); desk?.onHelperConnected() }
     private val refresh = Runnable { desk?.refresh() }
     private val tick = object : Runnable {
         override fun run() {
             desk?.refresh()
             // No helper yet (fresh boot, or it was killed): start it through Wireless debugging, quietly.
-            if (desk != null && !ShellClient.connected) Adb.start(this@DeskService, quiet = true)
+            if ((desk != null || bridge != null) && !ShellClient.connected) Adb.start(this@DeskService, quiet = true)
             handler.postDelayed(this, 2500)
         }
     }
@@ -62,23 +64,41 @@ class DeskService : AccessibilityService(), DisplayManager.DisplayListener {
         try { unregisterReceiver(packages) } catch (_: Exception) {}
         desk?.stop()
         desk = null
+        bridge?.stop()
+        bridge = null
         super.onDestroy()
     }
 
     private fun isDesktopDisplay(d: Display) =
         d.displayId != Display.DEFAULT_DISPLAY && d.flags and Display.FLAG_PRESENTATION != 0 && d.flags and Display.FLAG_PRIVATE == 0
 
+    /**
+     * Android 17 keeps external monitors in mirroring mode, where apps may not open. There the desk runs on a
+     * desktop display of HyperDesk's own, shown on the monitor by a [Bridge].
+     */
+    private fun needsBridge() = android.os.Build.VERSION.SDK_INT >= 37
+
     fun syncDisplays() {
-        val target = dm.displays.firstOrNull(::isDesktopDisplay)
+        val monitor = dm.displays.firstOrNull(::isDesktopDisplay)
+        if (bridge != null && bridge?.monitor?.displayId != monitor?.displayId) {
+            bridge?.stop()
+            bridge = null
+        }
+        var target = monitor
+        if (monitor != null && needsBridge()) {
+            val b = bridge ?: Bridge(this, monitor) { handler.post { syncDisplays() } }.also { bridge = it; it.start() }
+            target = b.displayId.takeIf { it > 0 }?.let { dm.getDisplay(it) }
+            if (b.displayId > 0 && target == null) b.displayLost()
+        }
+        handler.removeCallbacks(tick)
+        if (monitor != null) handler.postDelayed(tick, 2500)
         val current = desk
         if (current?.id == target?.displayId) return
         current?.stop()
-        handler.removeCallbacks(tick)
         desk = null
         if (target != null) {
             try {
-                desk = Desk(this, target).also { it.start() }
-                handler.postDelayed(tick, 2500)
+                desk = Desk(this, target, captureId = monitor?.displayId ?: target.displayId).also { it.start() }
             } catch (e: Exception) {
                 android.util.Log.e("HyperDesk", "failed to start desk", e)
             }
@@ -107,7 +127,6 @@ class DeskService : AccessibilityService(), DisplayManager.DisplayListener {
     /** Tear the desk down and build it again (after the monitor's density changed). */
     fun restartDesk() {
         desk?.stop()
-        handler.removeCallbacks(tick)
         desk = null
         syncDisplays()
     }
