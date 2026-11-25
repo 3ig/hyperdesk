@@ -7,6 +7,19 @@ Each `vX.Y.Z` tag publishes a GitHub Release whose notes are the matching sectio
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-25
+
+### Added
+- HyperOS 4 / Android 17 support. Android 17 keeps a connected monitor in mirroring mode, where apps cannot open;
+  HyperDesk now runs the desktop on a display of its own and shows it full-screen on the monitor. The mouse and
+  keyboard follow automatically.
+
+### Fixed
+- Brief glitches on both screens: HyperDesk re-applied the layout of its resize handles every 2.5 seconds even when
+  nothing had moved, which made HyperOS re-check the displays and reset the phone's refresh rate each time.
+- After a system update forgets HyperDesk's Wireless debugging pairing, HyperDesk now says so and offers to pair
+  again, instead of showing an SSL error.
+
 ## [0.1.0] - 2026-11-11
 
 First public release. Tested on a Xiaomi 15 Ultra (HyperOS 3.0, Android 16); see ROADMAP.md for which features
@@ -33,5 +46,6 @@ have been verified on a device.
   no root. The pairing code can be typed straight into a notification.
 - The mouse pointer stays on the monitor while it is connected.
 
-[Unreleased]: https://github.com/3ig/hyperdesk/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/3ig/hyperdesk/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/3ig/hyperdesk/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/3ig/hyperdesk/releases/tag/v0.1.0
